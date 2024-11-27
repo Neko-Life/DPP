@@ -96,6 +96,11 @@ struct DPP_EXPORT socket_engine_poll : public socket_engine_base {
 			}
 			socket_events *eh = iter->second.get();
 
+			/* Skip INVALID_SOCKET and marked for deletion */
+			if (fd == INVALID_SOCKET || (eh->flags & WANT_DELETION) == WANT_DELETION) {
+				continue;
+			}
+
 			try {
 
 				if ((revents & POLLHUP) != 0) {

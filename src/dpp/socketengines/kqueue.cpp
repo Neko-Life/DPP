@@ -59,6 +59,7 @@ struct DPP_EXPORT socket_engine_kqueue : public socket_engine_base {
 	void process_events() final {
 		struct timespec ts{};
 		ts.tv_sec = 1;
+		prune();
 
 		int i = kevent(kqueue_handle, nullptr, 0, ke_list.data(), static_cast<int>(ke_list.size()), &ts);
 		if (i < 0) {
@@ -69,6 +70,11 @@ struct DPP_EXPORT socket_engine_kqueue : public socket_engine_base {
 			const struct kevent& kev = ke_list[j];
 			auto* eh = reinterpret_cast<socket_events*>(kev.udata);
 			if (eh == nullptr) {
+				continue;
+			}
+
+			/* Skip INVALID_SOCKET and marked for deletion */
+			if (eh->fd == INVALID_SOCKET || (eh->flags & WANT_DELETION) == WANT_DELETION) {
 				continue;
 			}
 
@@ -98,7 +104,6 @@ struct DPP_EXPORT socket_engine_kqueue : public socket_engine_base {
 				eh->on_error(kev.ident, *eh, 0);
 			}
 		}
-		prune();
 	}
 
 	bool register_socket(const socket_events& e) final {

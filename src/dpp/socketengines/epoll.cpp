@@ -74,6 +74,7 @@ struct DPP_EXPORT socket_engine_epoll : public socket_engine_base {
 
 	void process_events() final {
 		const int sleep_length = 1000;
+		prune();
 		int i = epoll_wait(epoll_handle, events.data(), MAX_EVENTS, sleep_length);
 
 		for (int j = 0; j < i; j++) {
@@ -85,7 +86,9 @@ struct DPP_EXPORT socket_engine_epoll : public socket_engine_base {
 			}
 
 			const int fd = eh->fd;
-			if (fd == INVALID_SOCKET) {
+
+			/* Skip INVALID_SOCKET and marked for deletion */
+			if (fd == INVALID_SOCKET || (eh->flags & WANT_DELETION) == WANT_DELETION) {
 				continue;
 			}
 
@@ -128,7 +131,6 @@ struct DPP_EXPORT socket_engine_epoll : public socket_engine_base {
 				eh->on_error(fd, *eh, 0);
 			}
 		}
-		prune();
 	}
 
 	bool register_socket(const socket_events& e) final {
